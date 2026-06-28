@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Snapreel — Screen Recorder</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f5f4;
+    --surface: #ffffff;
+    --surface-1: #f5f5f4;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text-secondary: #6b6b67;
+    --text-muted: #9f9f9a;
+    --red: #E24B4A;
+    --red-bg: #FCEBEB;
+    --red-border: #F09595;
+    --red-dark: #A32D2D;
+    --radius: 8px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18;
+      --surface: #242422;
+      --surface-1: #2e2e2c;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --text: #f0f0ec;
+      --text-secondary: #a0a09a;
+      --text-muted: #6b6b66;
+      --red-bg: #2e1a1a;
+      --red-border: #6b2222;
+      --red-dark: #f09595;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 560px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .wordmark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 1.25rem 1.25rem 0;
+    margin-bottom: 1.25rem;
+  }
+  .logo {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--red);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .logo i { font-size: 18px; color: #fff; }
+  .app-title { font-size: 17px; font-weight: 500; color: var(--text); letter-spacing: -0.01em; }
+  .app-tagline { font-size: 12px; color: var(--text-muted); letter-spacing: 0.02em; }
+
+  .body { padding: 0 1.25rem 1.5rem; }
+
+  .stage {
+    background: var(--surface-1);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    aspect-ratio: 16/9;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  #preview {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    display: none;
+    background: #000;
+  }
+  #preview.active { display: block; }
+  .stage-idle {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .stage-idle i { font-size: 36px; color: var(--text-muted); }
+  .stage-idle span { font-size: 13px; color: var(--text-muted); }
+
+  .rec-pill {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px;
+    background: var(--red-bg);
+    border: 0.5px solid var(--red-border);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--red-dark);
+    width: fit-content;
+    margin-bottom: 12px;
+  }
+  .rec-pill.show { display: flex; }
+  .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
+  .timer { font-variant-numeric: tabular-nums; }
+
+  .opts {
+    display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .opt-group { display: flex; flex-direction: column; gap: 3px; }
+  .opt-label {
+    font-size: 11px; font-weight: 500; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  select {
+    height: 32px; padding: 0 26px 0 10px;
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border-strong);
+    background: var(--surface-1);
+    color: var(--text);
+    font-size: 13px; font-family: inherit;
+    cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 9px center;
+  }
+
+  .controls { display: flex; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+
+  .btn-rec {
+    display: inline-flex; align-items: center; gap: 7px;
+    height: 36px; padding: 0 16px;
+    border-radius: var(--radius);
+    border: none;
+    background: var(--red);
+    color: #fff;
+    font-size: 13px; font-weight: 500; font-family: inherit;
+    cursor: pointer; transition: opacity 0.12s;
+  }
+  .btn-rec:hover { opacity: 0.88; }
+  .btn-rec:active { transform: scale(0.98); }
+  .btn-rec:disabled { opacity: 0.38; cursor: not-allowed; }
+
+  .btn-ghost {
+    display: inline-flex; align-items: center; gap: 7px;
+    height: 36px; padding: 0 14px;
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border-strong);
+    background: transparent;
+    color: var(--text);
+    font-size: 13px; font-family: inherit;
+    cursor: pointer; transition: background 0.12s;
+  }
+  .btn-ghost:hover { background: var(--surface-1); }
+  .btn-ghost:active { transform: scale(0.98); }
+  .btn-ghost:disabled { opacity: 0.38; cursor: not-allowed; }
+
+  .divider { height: 0.5px; background: var(--border); margin-bottom: 1rem; }
+
+  .recs-header {
+    font-size: 11px; font-weight: 500; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;
+  }
+
+  .rec-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 6px;
+    background: var(--surface-1);
+  }
+  .rec-row .thumb { font-size: 18px; color: var(--red); flex-shrink: 0; }
+  .rec-info { flex: 1; min-width: 0; }
+  .rec-name { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+  .rec-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .rec-btns { display: flex; gap: 4px; }
+  .icon-btn {
+    width: 28px; height: 28px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--radius); border: 0.5px solid var(--border);
+    background: transparent; cursor: pointer;
+    color: var(--text-secondary); transition: background 0.1s;
+  }
+  .icon-btn:hover { background: var(--bg); }
+  .icon-btn i { font-size: 15px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="wordmark">
+    <div class="logo"><i class="ti ti-brand-youtube"></i></div>
+    <div>
+      <div class="app-title">Snapreel</div>
+      <div class="app-tagline">Screen recorder</div>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="stage">
+      <video id="preview" autoplay muted playsinline></video>
+      <div class="stage-idle" id="stage-idle">
+        <i class="ti ti-device-desktop"></i>
+        <span>Ready to capture</span>
+      </div>
+    </div>
+
+    <div id="rec-pill" class="rec-pill">
+      <span class="rec-dot"></span>
+      <span>Recording</span>
+      <span class="timer" id="timer">0:00</span>
+    </div>
+
+    <div class="opts">
+      <div class="opt-group">
+        <span class="opt-label">Quality</span>
+        <select id="quality">
+          <option value="2500000">High — 2.5 Mbps</option>
+          <option value="1000000" selected>Medium — 1 Mbps</option>
+          <option value="400000">Low — 400 Kbps</option>
+        </select>
+      </div>
+      <div class="opt-group">
+        <span class="opt-label">Microphone</span>
+        <select id="mic">
+          <option value="true">Include audio</option>
+          <option value="false">No audio</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="btn-start" class="btn-rec"><i class="ti ti-circle-dot"></i>Start recording</button>
+      <button id="btn-pause" class="btn-ghost" disabled><i class="ti ti-player-pause"></i>Pause</button>
+      <button id="btn-stop" class="btn-ghost" disabled><i class="ti ti-player-stop"></i>Stop</button>
+    </div>
+
+    <div id="recs-wrap" style="display:none">
+      <div class="divider"></div>
+      <div class="recs-header">Your recordings</div>
+      <div id="recs-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const preview = document.getElementById('preview');
+  const stageIdle = document.getElementById('stage-idle');
+  const btnStart = document.getElementById('btn-start');
+  const btnStop = document.getElementById('btn-stop');
+  const btnPause = document.getElementById('btn-pause');
+  const recPill = document.getElementById('rec-pill');
+  const timerEl = document.getElementById('timer');
+  const recsList = document.getElementById('recs-list');
+  const recsWrap = document.getElementById('recs-wrap');
+  const qualitySel = document.getElementById('quality');
+  const micSel = document.getElementById('mic');
+
+  let mediaRecorder = null, stream = null, chunks = [], recordings = [];
+  let timerInterval = null, seconds = 0, paused = false;
+
+  const fmt = s => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+  const fmtSize = b => b < 1048576 ? (b / 1024).toFixed(1) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
+
+  function startTimer() {
+    seconds = 0; timerEl.textContent = fmt(0);
+    timerInterval = setInterval(() => { if (!paused) { seconds++; timerEl.textContent = fmt(seconds); } }, 1000);
+  }
+  function stopTimer() { clearInterval(timerInterval); }
+
+  function renderRecs() {
+    recsWrap.style.display = recordings.length ? 'block' : 'none';
+    recsList.innerHTML = '';
+    recordings.forEach((r, i) => {
+      const d = document.createElement('div');
+      d.className = 'rec-row';
+      d.innerHTML = `
+        <i class="ti ti-video thumb"></i>
+        <div class="rec-info">
+          <div class="rec-name">${r.name}</div>
+          <div class="rec-meta">${r.dur} &middot; ${r.size}</div>
+        </div>
+        <div class="rec-btns">
+          <button class="icon-btn" onclick="playR(${i})" title="Play"><i class="ti ti-player-play"></i></button>
+          <button class="icon-btn" onclick="dlR(${i})" title="Download"><i class="ti ti-download"></i></button>
+          <button class="icon-btn" onclick="delR(${i})" title="Delete"><i class="ti ti-trash"></i></button>
+        </div>`;
+      recsList.appendChild(d);
+    });
+  }
+
+  window.playR = i => {
+    const r = recordings[i];
+    preview.src = r.url; preview.controls = true; preview.muted = false;
+    preview.classList.add('active'); stageIdle.style.display = 'none';
+    preview.play();
+  };
+  window.dlR = i => {
+    const a = document.createElement('a');
+    a.href = recordings[i].url; a.download = recordings[i].name; a.click();
+  };
+  window.delR = i => {
+    URL.revokeObjectURL(recordings[i].url);
+    recordings.splice(i, 1); renderRecs();
+  };
+
+  btnStart.addEventListener('click', async () => {
+    try {
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: true });
+      let audioTracks = displayStream.getAudioTracks();
+      if (micSel.value === 'true') {
+        try {
+          const m = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          audioTracks = [...audioTracks, ...m.getAudioTracks()];
+        } catch (e) {}
+      }
+      stream = new MediaStream([...displayStream.getVideoTracks(), ...audioTracks]);
+      preview.srcObject = stream; preview.controls = false; preview.muted = true;
+      preview.classList.add('active'); stageIdle.style.display = 'none';
+      chunks = [];
+      const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+        ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+      mediaRecorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: parseInt(qualitySel.value) });
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: mime });
+        const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        recordings.unshift({ url: URL.createObjectURL(blob), name: `Snapreel ${ts}.webm`, size: fmtSize(blob.size), dur: fmt(seconds) });
+        renderRecs(); chunks = [];
+      };
+      stream.getVideoTracks()[0].onended = () => {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') stopRec();
+      };
+      mediaRecorder.start(1000); paused = false; startTimer();
+      btnStart.disabled = true; btnStop.disabled = false; btnPause.disabled = false;
+      qualitySel.disabled = true; micSel.disabled = true;
+      recPill.classList.add('show');
+    } catch (e) {
+      if (e.name !== 'NotAllowedError') console.error(e);
+    }
+  });
+
+  function stopRec() {
+    if (!mediaRecorder) return;
+    mediaRecorder.stop(); stream.getTracks().forEach(t => t.stop());
+    preview.srcObject = null; preview.src = ''; preview.controls = false;
+    preview.classList.remove('active'); stageIdle.style.display = 'flex';
+    stopTimer(); recPill.classList.remove('show');
+    btnStart.disabled = false; btnStop.disabled = true; btnPause.disabled = true;
+    qualitySel.disabled = false; micSel.disabled = false;
+    paused = false;
+    btnPause.innerHTML = '<i class="ti ti-player-pause"></i>Pause';
+    mediaRecorder = null; stream = null;
+  }
+
+  btnStop.addEventListener('click', stopRec);
+
+  btnPause.addEventListener('click', () => {
+    if (!mediaRecorder) return;
+    if (mediaRecorder.state === 'recording') {
+      mediaRecorder.pause(); paused = true;
+      btnPause.innerHTML = '<i class="ti ti-player-play"></i>Resume';
+    } else if (mediaRecorder.state === 'paused') {
+      mediaRecorder.resume(); paused = false;
+      btnPause.innerHTML = '<i class="ti ti-player-pause"></i>Pause';
+    }
+  });
+</script>
+</body>
+</html>
